@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Send to Kindle - Settings</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="container mx-auto px-4 py-8 max-w-2xl">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Settings</h1>
+    
+    <div class="bg-white rounded-lg shadow-md p-6 space-y-6">
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+        <h2 class="text-sm font-semibold text-blue-800 mb-2">Free Email Setup (Google Apps Script)</h2>
+        <p class="text-xs text-blue-700 mb-2">
+          This extension uses Google Apps Script as a free email relay. No paid services required!
+        </p>
+        <a 
+          href="https://script.google.com/" 
+          target="_blank"
+          class="text-xs text-blue-600 hover:text-blue-800 underline"
+        >
+          Setup Instructions →
+        </a>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">
+          Recipient Kindle Email Address
+        </label>
+        <input 
+          type="email" 
+          id="kindleEmail" 
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="yourname@kindle.com"
+        />
+        <p class="text-xs text-gray-500 mt-1">Find this in your Amazon Kindle settings</p>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">
+          Send-from Email Address (Your Gmail)
+        </label>
+        <input 
+          type="email" 
+          id="fromEmail" 
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="yourname@gmail.com"
+        />
+        <p class="text-xs text-gray-500 mt-1">Must be the Gmail account you use for Google Apps Script</p>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">
+          Google Apps Script Web App URL
+        </label>
+        <input 
+          type="url" 
+          id="scriptUrl" 
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="https://script.google.com/macros/s/..."
+        />
+        <p class="text-xs text-gray-500 mt-1">
+          Get this URL after deploying your Google Apps Script (see google-apps-script.js file)
+        </p>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">
+          API Key (Optional - for security)
+        </label>
+        <input 
+          type="password" 
+          id="apiKey" 
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Leave empty if not using API key"
+        />
+        <p class="text-xs text-gray-500 mt-1">
+          Only needed if you enabled API key protection in your Google Apps Script
+        </p>
+      </div>
+      
+      <div class="flex justify-end space-x-3 pt-4">
+        <button 
+          id="saveBtn" 
+          class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200"
+        >
+          Save Settings
+        </button>
+      </div>
+      
+      <div id="status" class="text-sm text-gray-600 hidden"></div>
+    </div>
+  </div>
+  
+  <script src="options.js"></script>
+</body>
+</html>

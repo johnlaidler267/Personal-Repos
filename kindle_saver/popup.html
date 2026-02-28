@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Send to Kindle</title>
+  <style>
+    :root {
+      --primary: #c9a227;
+      --primary-foreground: #1a1a1a;
+      --primary-glow: rgba(217, 175, 100, 0.5);
+      --primary-glow-soft: rgba(217, 175, 100, 0.2);
+      --border: rgba(0, 0, 0, 0.08);
+      --card: #fefefe;
+      --foreground: #171717;
+      --muted-foreground: #737373;
+      --secondary: #f5f5f5;
+      --secondary-foreground: #262626;
+      --destructive: #dc2626;
+      --ring: var(--primary);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      width: 360px;
+      min-height: 200px;
+      background: var(--card);
+    }
+
+    .popup {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+    }
+
+    .glow-top {
+      pointer-events: none;
+      position: absolute;
+      top: -80px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 256px;
+      height: 160px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+      opacity: 0.3;
+      filter: blur(40px);
+    }
+
+    .particles {
+      pointer-events: none;
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+    .particle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--primary);
+      opacity: 0.25;
+      animation: float 8s ease-in-out infinite;
+    }
+    .particle:nth-child(1) { left: 10%; top: 20%; animation-delay: 0s; }
+    .particle:nth-child(2) { left: 80%; top: 30%; animation-delay: -2s; }
+    .particle:nth-child(3) { left: 25%; top: 70%; animation-delay: -4s; }
+    .particle:nth-child(4) { left: 70%; top: 60%; animation-delay: -1s; }
+    .particle:nth-child(5) { left: 50%; top: 45%; animation-delay: -3s; }
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0); opacity: 0.25; }
+      25% { transform: translate(6px, -8px); opacity: 0.4; }
+      50% { transform: translate(-4px, 4px); opacity: 0.2; }
+      75% { transform: translate(8px, 4px); opacity: 0.35; }
+    }
+
+    header {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 24px 8px;
+    }
+    .logo-wrap {
+      position: relative;
+      margin-bottom: 12px;
+    }
+    .logo-glow {
+      position: absolute;
+      inset: 0;
+      transform: scale(1.5);
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+      opacity: 0.2;
+      filter: blur(16px);
+    }
+    .logo {
+      position: relative;
+      width: 56px;
+      height: 56px;
+      color: var(--primary);
+    }
+    h1 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--foreground);
+      text-align: center;
+      margin: 0;
+    }
+    .subtitle {
+      margin-top: 4px;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      color: var(--muted-foreground);
+      text-align: center;
+    }
+
+    .divider {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 12px 24px;
+    }
+    .divider span {
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+    .divider svg {
+      width: 12px;
+      height: 12px;
+      color: var(--primary);
+      opacity: 0.5;
+    }
+
+    .quote {
+      position: relative;
+      z-index: 10;
+      padding: 0 24px;
+      font-family: Georgia, serif;
+      font-size: 0.75rem;
+      font-style: italic;
+      line-height: 1.6;
+      color: var(--muted-foreground);
+      opacity: 0.9;
+      text-align: center;
+    }
+
+    .actions {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 20px 24px 16px;
+    }
+    .btn-primary {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 12px 20px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--primary-foreground);
+      background: var(--primary);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      transition: box-shadow 0.2s, filter 0.2s;
+    }
+    .btn-primary:hover:not(:disabled) {
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      filter: brightness(1.1);
+    }
+    .btn-primary:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ring);
+    }
+    .btn-primary:disabled {
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+    .btn-primary .btn-content { display: flex; align-items: center; gap: 10px; }
+    .btn-primary .btn-content.hidden { display: none; }
+
+    .btn-shine {
+      position: absolute;
+      inset: 0;
+      border-radius: 8px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .btn-primary:hover:not(:disabled) .btn-shine { opacity: 1; }
+
+    .btn-settings {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--secondary-foreground);
+      background: var(--secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      text-decoration: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .btn-settings:hover {
+      border-color: rgba(201, 162, 39, 0.3);
+      background: rgba(245, 245, 245, 0.9);
+    }
+    .btn-settings:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--ring);
+    }
+    .btn-settings svg {
+      width: 14px;
+      height: 14px;
+      color: var(--muted-foreground);
+      transition: transform 0.3s, color 0.3s;
+    }
+    .btn-settings:hover svg {
+      transform: rotate(90deg);
+      color: var(--primary);
+    }
+
+    .status-bar {
+      position: relative;
+      z-index: 10;
+      border-top: 1px solid var(--border);
+      padding: 12px 24px;
+      display: none;
+    }
+    .status-bar.visible {
+      display: block;
+    }
+    .status-bar .status-inner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status-bar .status-icon {
+      flex-shrink: 0;
+      width: 14px;
+      height: 14px;
+    }
+    .status-bar .status-icon.hidden { display: none; }
+    .status-bar .status-msg {
+      font-size: 0.75rem;
+    }
+    .status-bar.success .status-msg { color: var(--primary); }
+    .status-bar.error .status-msg { color: var(--destructive); }
+    .status-bar.sending .status-msg { color: var(--muted-foreground); }
+    .status-bar.success svg { color: var(--primary); }
+    .status-bar.error svg { color: var(--destructive); }
+    .status-bar.sending svg { color: var(--primary); }
+    .spin { animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .pulse { animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    .edge-bottom {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--primary-glow-soft), transparent);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="popup">
+    <div class="glow-top" aria-hidden="true"></div>
+    <div class="particles" aria-hidden="true">
+      <span class="particle"></span>
+      <span class="particle"></span>
+      <span class="particle"></span>
+      <span class="particle"></span>
+      <span class="particle"></span>
+    </div>
+
+    <header>
+      <div class="logo-wrap">
+        <div class="logo-glow" aria-hidden="true"></div>
+        <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          <path d="M8 7h8"/>
+          <path d="M8 11h8"/>
+        </svg>
+      </div>
+      <h1>Send to Kindle</h1>
+      <p class="subtitle">Convert this page to EPUB and send it to your Kindle</p>
+    </header>
+
+    <div class="divider" aria-hidden="true">
+      <span></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+      <span></span>
+    </div>
+
+    <blockquote class="quote" id="quote">"A reader lives a thousand lives before he dies."</blockquote>
+
+    <div class="actions">
+      <button type="button" id="sendToKindleBtn" class="btn-primary" aria-live="polite">
+        <span class="btn-shine" aria-hidden="true"></span>
+        <span class="btn-content btn-idle">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+          <span>Send to Kindle</span>
+        </span>
+        <span class="btn-content btn-sending hidden">
+          <svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg>
+          <span>Sending...</span>
+        </span>
+        <span class="btn-content btn-success hidden">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 12 2 2 4-4"/></svg>
+          <span>Sent Successfully</span>
+        </span>
+        <span class="btn-content btn-error hidden">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+          <span>Try Again</span>
+        </span>
+      </button>
+
+      <a href="options.html" target="_blank" class="btn-settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span>Settings</span>
+      </a>
+    </div>
+
+    <div id="statusBar" class="status-bar" role="status" aria-live="polite">
+      <div class="status-inner">
+        <svg class="status-icon status-icon-sending" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8"/><path d="M8 11h8"/></svg>
+        <svg class="status-icon status-icon-success hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 12 2 2 4-4"/></svg>
+        <svg class="status-icon status-icon-error hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+        <p id="status" class="status-msg">Converting page and preparing delivery...</p>
+      </div>
+    </div>
+
+    <div class="edge-bottom" aria-hidden="true"></div>
+  </div>
+
+  <script src="jszip.min.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

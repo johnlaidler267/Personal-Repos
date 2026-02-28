@@ -1,0 +1,16 @@
+# Chrome Extension
+*.crx
+*.pem
+
+# Icons (add your icon files here)
+# icons/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
