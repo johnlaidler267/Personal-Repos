@@ -23,8 +23,46 @@ async function loadJSZip() {
   throw new Error('JSZip library not loaded. Ensure jszip.min.js is in the extension folder and loaded in popup.html.');
 }
 
-// Generate EPUB from article
-async function generateEPUB(article) {
+// Extract img src URLs from HTML and resolve to absolute URLs (order preserved, duplicates kept for mapping)
+function getImageUrlsFromHTML(html, baseUrl) {
+  if (!html || !baseUrl) return [];
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  const imgs = div.querySelectorAll('img[src]');
+  const urls = [];
+  try {
+    const base = new URL(baseUrl);
+    imgs.forEach((img) => {
+      const src = (img.getAttribute('src') || '').trim();
+      if (!src || src.startsWith('data:')) return;
+      try {
+        urls.push(new URL(src, base).href);
+      } catch (_) {}
+    });
+  } catch (_) {}
+  return urls;
+}
+
+// Fetch a single image via background script; returns { data, contentType } or null
+async function fetchImageAsBase64(url) {
+  const res = await chrome.runtime.sendMessage({ action: 'fetchImage', url });
+  if (res && res.success && res.data) return { data: res.data, contentType: res.contentType || 'image/png' };
+  return null;
+}
+
+// Content-type to file extension for EPUB
+function contentTypeToExt(ct) {
+  const m = (ct || '').toLowerCase();
+  if (m.includes('jpeg') || m.includes('jpg')) return 'jpg';
+  if (m.includes('png')) return 'png';
+  if (m.includes('gif')) return 'gif';
+  if (m.includes('webp')) return 'webp';
+  if (m.includes('svg')) return 'svg';
+  return 'png';
+}
+
+// Generate EPUB from article (baseUrl = tab URL for resolving image URLs)
+async function generateEPUB(article, baseUrl = '') {
   console.log('generateEPUB called with article:', article.title);
   
   console.log('Loading JSZip...');
@@ -32,12 +70,56 @@ async function generateEPUB(article) {
   console.log('JSZip loaded, creating zip...');
   
   const zip = new JSZip();
-  console.log('ZIP created, adding files...');
-  
+  const rawContent = article.content || article.textContent || '';
   const cleanTitle = escapeXML(article.title || 'Untitled Article');
-  const cleanContent = sanitizeHTML(article.content || article.textContent || '');
   const cleanByline = escapeXML(article.byline || '');
   const cleanSiteName = escapeXML(article.siteName || '');
+
+  // Parse images: get ordered list of absolute URLs, then fetch and build url -> local path
+  const imageUrls = getImageUrlsFromHTML(rawContent, baseUrl);
+  const urlToLocal = {}; // absolute URL -> e.g. "images/img0.png"
+  const manifestItems = [];
+  let imagesFolder = null;
+  let imageIndex = 0;
+  const seenUrls = new Set();
+  for (const url of imageUrls) {
+    if (seenUrls.has(url)) continue;
+    seenUrls.add(url);
+    const fetched = await fetchImageAsBase64(url);
+    if (!fetched) continue;
+    if (!imagesFolder) imagesFolder = zip.folder('OEBPS').folder('images');
+    const ext = contentTypeToExt(fetched.contentType);
+    const safeName = `img${imageIndex}.${ext}`;
+    const localPath = `images/${safeName}`;
+    urlToLocal[url] = localPath;
+    const binary = Uint8Array.from(atob(fetched.data), (c) => c.charCodeAt(0));
+    imagesFolder.file(safeName, binary, { binary: true });
+    const mediaType = fetched.contentType.startsWith('image/') ? fetched.contentType : `image/${ext}`;
+    manifestItems.push(`    <item id="img${imageIndex}" href="${localPath}" media-type="${escapeXML(mediaType)}"/>`);
+    imageIndex++;
+  }
+
+  // Replace img src in HTML with local paths
+  let cleanContent = sanitizeHTML(rawContent);
+  if (baseUrl && Object.keys(urlToLocal).length > 0) {
+    const div = document.createElement('div');
+    div.innerHTML = cleanContent;
+    const imgs = div.querySelectorAll('img[src]');
+    try {
+      const base = new URL(baseUrl);
+      imgs.forEach((img) => {
+        const src = (img.getAttribute('src') || '').trim();
+        if (!src || src.startsWith('data:')) return;
+        try {
+          const abs = new URL(src, base).href;
+          if (urlToLocal[abs]) img.setAttribute('src', urlToLocal[abs]);
+        } catch (_) {}
+      });
+      cleanContent = div.innerHTML;
+    } catch (_) {}
+  }
+  
+  console.log('ZIP created, adding files...');
   
   // mimetype (must be first, uncompressed)
   zip.file('mimetype', 'application/epub+zip', { compression: 'STORE' });
@@ -50,7 +132,8 @@ async function generateEPUB(article) {
   </rootfiles>
 </container>`);
   
-  // OEBPS/content.opf
+  // OEBPS/content.opf (include image items in manifest)
+  const manifestImages = manifestItems.length ? '\n' + manifestItems.join('\n') + '\n' : '';
   zip.folder('OEBPS').file('content.opf', `<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
@@ -64,7 +147,7 @@ async function generateEPUB(article) {
   <manifest>
     <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
     <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
-    <item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>
+    <item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>${manifestImages}
   </manifest>
   <spine toc="nav">
     <itemref idref="cover"/>
@@ -107,7 +190,7 @@ async function generateEPUB(article) {
 </body>
 </html>`);
   
-  // Main content
+  // Main content (with embedded image paths)
   zip.folder('OEBPS').file('chapter1.xhtml', `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -285,11 +368,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         showStatus('Generating EPUB...', false, true);
         
-        // Step 4: Generate EPUB
+        // Step 4: Generate EPUB (pass tab URL so images can be resolved and fetched)
         console.log('Starting EPUB generation...');
         let epubBlob;
         try {
-          epubBlob = await generateEPUB(article);
+          epubBlob = await generateEPUB(article, tab.url);
           console.log('EPUB generated successfully, size:', epubBlob.size);
         } catch (error) {
           console.error('EPUB generation error:', error);

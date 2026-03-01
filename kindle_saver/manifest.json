@@ -8,7 +8,8 @@
     "https://script.google.com/*",
     "https://cdn.jsdelivr.net/*",
     "https://unpkg.com/*",
-    "https://raw.githubusercontent.com/*"
+    "https://raw.githubusercontent.com/*",
+    "<all_urls>"
   ],
   "icons": {
     "16": "icons/icon128.png",

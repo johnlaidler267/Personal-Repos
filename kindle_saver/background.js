@@ -228,4 +228,32 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     
     return true;
   }
+
+  // Fetch an image URL and return as base64 (bypasses CORS in extension context)
+  if (request.action === 'fetchImage') {
+    const url = request.url;
+    if (!url || !url.startsWith('http')) {
+      sendResponse({ success: false, error: 'Invalid image URL' });
+      return true;
+    }
+    fetch(url, { mode: 'cors', credentials: 'omit' })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.blob();
+      })
+      .then((blob) => {
+        const type = blob.type || 'image/png';
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64 = reader.result.split(',')[1];
+          sendResponse({ success: true, data: base64, contentType: type });
+        };
+        reader.onerror = () => sendResponse({ success: false, error: 'Failed to read blob' });
+        reader.readAsDataURL(blob);
+      })
+      .catch((err) => {
+        sendResponse({ success: false, error: err.message || 'Fetch failed' });
+      });
+    return true;
+  }
 });
